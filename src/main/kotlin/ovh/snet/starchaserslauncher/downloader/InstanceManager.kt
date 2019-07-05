@@ -1,18 +1,15 @@
 package ovh.snet.starchaserslauncher.downloader
 
 import com.google.gson.Gson
-import com.mashape.unirest.http.HttpResponse
 import com.mashape.unirest.http.Unirest
-import com.mashape.unirest.http.async.Callback
-import com.mashape.unirest.http.exceptions.UnirestException
 import ovh.snet.starchaserslauncher.downloader.dto.*
 import java.io.File
-import java.io.InputStream
 import java.nio.file.Path
 
 const val INSTANCE_STORAGE_DIR = "instances/"
 
-class MinecraftDownloader {
+class InstanceManager {
+    //TODO force update
     var versionList: MinecraftVersionList? = null
 
     init {
@@ -45,12 +42,24 @@ class MinecraftDownloader {
             println("name taken")
             return
         }
-        Path.of(INSTANCE_STORAGE_DIR, name).toFile().mkdir()
+
+        val instanceRoot = Path.of(INSTANCE_STORAGE_DIR, name)
+        instanceRoot.toFile().mkdir()
 
         val (versionManifest, assets) = getManifests(version)
 
-        downloadLibs(versionManifest, Path.of(INSTANCE_STORAGE_DIR, name).toString())
+        val downloader = FileDownloader()
 
+        //TODO check file existence
+        downloadLibs(versionManifest, instanceRoot.toString(), downloader)
+        downloadAssets(assets, instanceRoot.toString(), downloader)
+        downloadClient(versionManifest, instanceRoot.toString(), downloader)
+
+        //TODO remove
+        while(!downloader.isDone()){
+            println(downloader.getProgress())
+            Thread.sleep(1000)
+        }
     }
 
     private fun checkName(name: String): Boolean = !Path.of(INSTANCE_STORAGE_DIR, name).toFile().exists()
@@ -64,7 +73,7 @@ class MinecraftDownloader {
             //TODO handle error in gui
         }
 
-        val versionManifest = gson.fromJson<VersionManifest>(
+        val versionManifest = gson.fromJson(
             manifestResponse.body,
             VersionManifest::class.java
         )
@@ -77,35 +86,57 @@ class MinecraftDownloader {
             //TODO handle error in gui
         }
 
-        val assetList = gson.fromJson<AssetList>(assetListResponse.body, AssetList::class.java)
+        val assetList = gson.fromJson(assetListResponse.body, AssetList::class.java)
 
         return Pair(versionManifest, assetList)
     }
 
-    private fun downloadLibs(versionManifest: VersionManifest, instanceRoot: String) {
+    private fun downloadLibs(versionManifest: VersionManifest, instanceRoot: String, downloader: FileDownloader) {
+
         versionManifest.libraries.forEach {
             val path = it.downloads.artifact.path
-            val downloadPath = it.downloads.classifiers?.nativesWindows?.path ?: path
             val libraryRoot = Path.of(instanceRoot, "libraries").toString()
             //TODO linux support
 
-            Unirest.get("https://libraries.minecraft.net/$downloadPath")
-                .asBinaryAsync(object : Callback<InputStream> {
-                    override fun cancelled() {
-                        println("download cancelled")
-                    }
+            downloader.downloadFile(
+                "https://libraries.minecraft.net/$path",
+                Path.of(libraryRoot, path).toString(),
+                it.downloads.artifact.size.toLong()
+            )
 
-                    override fun completed(response: HttpResponse<InputStream>?) {
-                        Path.of(libraryRoot, path.replaceAfterLast("/", "")).toFile().mkdirs()
-                        Path.of(libraryRoot, path).toFile().outputStream().use { os -> response?.body?.copyTo(os) }
-                    }
+            if (it.downloads.classifiers?.nativesWindows != null) {
+                val nativesPath = it.downloads.classifiers.nativesWindows.path
+                downloader.downloadFile(
+                    "https://libraries.minecraft.net/$nativesPath",
+                    Path.of(libraryRoot, nativesPath).toString(),
+                    it.downloads.classifiers.nativesWindows.size.toLong()
+                )
+            }
 
-                    override fun failed(e: UnirestException?) {
-                        println("download $downloadPath failed")
-                    }
-                })
-            println("started download ${it.name}")
         }
+    }
+
+    private fun downloadAssets(assetList: AssetList, instanceRoot: String, downloader: FileDownloader) {
+        val assetRoot = Path.of(instanceRoot, "assets")
+        assetRoot.toFile().mkdirs()
+
+        assetList.objects.entries.forEach { asset ->
+            val prefix = asset.value.hash.substring(0, 2)
+            Path.of(assetRoot.toString(), prefix).toFile().let { if (!it.exists()) it.mkdirs() }
+            downloader.downloadFile(
+                "http://resources.download.minecraft.net/$prefix/${asset.value.hash}",
+                Path.of(assetRoot.toString(), prefix, asset.value.hash).toString(),
+                asset.value.size.toLong()
+            )
+        }
+    }
+
+    private fun downloadClient(versionManifest: VersionManifest, instanceRoot: String, downloader: FileDownloader) {
+        downloader.downloadFile(
+            versionManifest.downloads.client.url,
+            Path.of(instanceRoot, "client.jar").toString(),
+            versionManifest.downloads.client.size.toLong()
+        )
     }
 
     private fun initVersionList() {
