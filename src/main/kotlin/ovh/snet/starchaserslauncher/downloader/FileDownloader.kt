@@ -19,7 +19,11 @@ class FileDownloader {
 
     private val maxRetry = 3
 
-    fun downloadFile(link: String, path: String, size: Long = 0, retry: Int = 0) {
+    fun downloadFile(link: String, path: String, size: Long = 0) {
+        downloadFile(link, path, size, 0)
+    }
+
+    private fun downloadFile(link: String, path: String, size: Long = 0, retry: Int) {
         if (size < 0) throw RuntimeException("File size less than 0.")
         if (retry > maxRetry) return
 

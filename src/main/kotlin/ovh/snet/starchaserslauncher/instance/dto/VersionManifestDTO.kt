@@ -1,4 +1,4 @@
-package ovh.snet.starchaserslauncher.downloader.dto
+package ovh.snet.starchaserslauncher.instance.dto
 
 import com.google.gson.annotations.SerializedName
 

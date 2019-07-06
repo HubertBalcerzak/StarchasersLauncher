@@ -1,6 +1,4 @@
-package ovh.snet.starchaserslauncher.downloader.dto
-
-import java.time.LocalDateTime
+package ovh.snet.starchaserslauncher.instance.dto
 
 class MinecraftVersionList(
     val latest: LatestMinecraftVersion,

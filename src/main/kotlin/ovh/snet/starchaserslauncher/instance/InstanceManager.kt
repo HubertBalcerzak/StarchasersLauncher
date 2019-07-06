@@ -1,52 +1,70 @@
-package ovh.snet.starchaserslauncher.downloader
+package ovh.snet.starchaserslauncher.instance
 
 import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
-import ovh.snet.starchaserslauncher.downloader.dto.*
+import ovh.snet.starchaserslauncher.downloader.FileDownloader
+import ovh.snet.starchaserslauncher.instance.dto.*
 import java.io.File
 import java.nio.file.Path
 
 const val INSTANCE_STORAGE_DIR = "instances/"
 
 class InstanceManager {
-    //TODO force update
-    var versionList: MinecraftVersionList? = null
+    private var versionList: MinecraftVersionList
+    private val instanceConfiguration = InstanceConfiguration()
+
 
     init {
+        versionList = initVersionList()
+        initVersionList()
         val instancesDir = File(INSTANCE_STORAGE_DIR)
         if (!instancesDir.exists()) instancesDir.mkdir()
     }
 
     fun getVersionList(includeSnapshots: Boolean): List<MinecraftVersion> {
-        initVersionList()
-        return versionList?.versions ?: throw IllegalStateException("Version list not initialized")
-        //TODO filter unsupported versions
+        return versionList.versions
     }
 
     fun getLatestRelease(): MinecraftVersion {
-        initVersionList()
-        return versionList?.versions?.find { it.id == versionList?.latest?.release && it.type == Type.release }
+        return versionList.versions.find { it.id == versionList.latest.release && it.type == Type.release }
             ?: throw IllegalStateException("Version list not initialized")
     }
 
     fun getLatestSnapshot(): MinecraftVersion {
-        initVersionList()
-        return versionList?.versions?.find { it.id == versionList?.latest?.snapshot }
+        return versionList.versions.find { it.id == versionList.latest.snapshot }
             ?: throw IllegalStateException("Version list not initialized")
     }
 
 
-    fun createInstance(version: MinecraftVersion, name: String) {
-        if (!checkName(name)) {
+    fun createInstance(version: MinecraftVersion, name: String, modpackLink: String?): Instance {
+        if (instanceConfiguration.getInstance(name) != null) {
             //TODO handle error in gui
             println("name taken")
-            return
+            throw InstanceNameTakenException(name)
         }
 
-        val instanceRoot = Path.of(INSTANCE_STORAGE_DIR, name)
+        val instance = if (modpackLink == null)
+            Instance(name, version.id, "Vanilla", "1G")
+        else
+            Instance(name, version.id, modpackLink, "tmp")
+
+        instanceConfiguration.addInstance(instance)
+        //TODO download modpack manifest
+
+        return instance
+    }
+
+    fun updateInstance(instance: Instance, force: Boolean = false): FileDownloader {
+        //TODO force update
+        val instanceRoot = Path.of(INSTANCE_STORAGE_DIR, instance.name)
         instanceRoot.toFile().mkdir()
 
-        val (versionManifest, assets) = getManifests(version)
+        val version = versionList.versions.find { it.id == instance.version }
+        val (versionManifest, assets) = getManifests(
+            version ?: throw UnknownVersionException(
+                instance.version
+            )
+        )
 
         val downloader = FileDownloader()
 
@@ -56,11 +74,17 @@ class InstanceManager {
         downloadClient(versionManifest, instanceRoot.toString(), downloader)
 
         //TODO remove
-        while(!downloader.isDone()){
+        while (!downloader.isDone()) {
             println(downloader.getProgress())
             Thread.sleep(1000)
         }
+
+        return downloader
     }
+
+    fun getInstanceList(): List<Instance> = instanceConfiguration.getInstanceList()
+
+    fun getInstance(name: String): Instance? = instanceConfiguration.getInstance(name)
 
     private fun checkName(name: String): Boolean = !Path.of(INSTANCE_STORAGE_DIR, name).toFile().exists()
 
@@ -139,14 +163,13 @@ class InstanceManager {
         )
     }
 
-    private fun initVersionList() {
-        if (versionList != null) return
-
+    private fun initVersionList(): MinecraftVersionList {
+        //TODO filter unsupported versions
         val response = Unirest.get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
             .asString()
 
         val gson = Gson()
-        versionList = gson.fromJson(response.body, MinecraftVersionList::class.java)
+        return gson.fromJson(response.body, MinecraftVersionList::class.java)
 
     }
 
