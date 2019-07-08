@@ -44,9 +44,9 @@ class InstanceManager {
         }
 
         val instance = if (modpackLink == null)
-            Instance(name, version.id, "Vanilla", "1G")
+            Instance(name, version.id, "Vanilla", "1G", modpackLink)
         else
-            Instance(name, version.id, modpackLink, "tmp")
+            Instance(name, version.id, "modpack", "tmp", modpackLink)
 
         instanceConfiguration.addInstance(instance)
         //TODO download modpack manifest
