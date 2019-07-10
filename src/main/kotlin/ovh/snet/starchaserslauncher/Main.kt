@@ -2,7 +2,13 @@ package ovh.snet.starchaserslauncher
 
 import ovh.snet.starchaserslauncher.auth.AuthManager
 import ovh.snet.starchaserslauncher.instance.InstanceManager
+import ovh.snet.starchaserslauncher.ui.view.MainView
+import tornadofx.App
+import tornadofx.launch
 import java.lang.RuntimeException
+
+
+class LauncherApplication : App(MainView::class)
 
 fun main() {
     val username = ""
@@ -20,4 +26,6 @@ fun main() {
 //    instanceManager.updateInstance(instance)
 
 //    auth.signIn(username, password)
+
+    launch<LauncherApplication>()
 }
