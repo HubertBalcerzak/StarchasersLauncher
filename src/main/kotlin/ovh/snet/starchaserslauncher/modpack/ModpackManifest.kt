@@ -13,7 +13,8 @@ class ModpackData(
     val mcVersion: String,
     val name: String,
     val modpackVersion: String,
-    val xmx: String
+    val xmx: String,
+    val rootEndpoint: String
 )
 
 class ModpackFile(
@@ -22,15 +23,11 @@ class ModpackFile(
 )
 
 class IgnoredModpackFile(
-    val value: String,
-    val type: IgnoreType
+    val value: String
 )
 
-enum class IgnoreType {
-    FILE_EXACT,
-    FILE_STARTS_WITH,
-    FILE_CONTAINS,
-    FOLDER_EXACT,
-    FOLDER_STARTS_WITH,
-    FOLDER_CONTAINS
-}
+//enum class IgnoreType { //TODO implement
+//    EXACT,
+//    STARTS_WITH,
+//    CONTAINS,
+//}

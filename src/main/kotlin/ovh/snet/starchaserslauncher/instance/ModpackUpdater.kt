@@ -2,10 +2,14 @@ package ovh.snet.starchaserslauncher.instance
 
 import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
+import ovh.snet.starchaserslauncher.downloader.Entry
+import ovh.snet.starchaserslauncher.downloader.EntryType
+import ovh.snet.starchaserslauncher.modpack.IgnoredModpackFile
+import ovh.snet.starchaserslauncher.modpack.ModpackFile
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
 import java.io.File
 import java.nio.file.Files
-import java.nio.file.Path
+import java.nio.file.Paths
 
 
 class ModpackUpdater(
@@ -21,12 +25,63 @@ class ModpackUpdater(
         remoteManifestString = getRemoteString()
     }
 
-    fun updateModpack(forceVerify: Boolean, forceUpdate: Boolean) {
+    fun updateModpack(forceUpdate: Boolean): Entry {
         val manifest = loadModpackManifest()
-        val verify = forceVerify || !checkModpackManifestVersion()
-        if(!verify && !forceUpdate) return
+//        val verify = !checkModpackManifestVersion()
 
+        val rootEntry = Entry(".minecraft", EntryType.DIRECTORY)
 
+        processRegularFiles(manifest.update, rootEntry, manifest.data.rootEndpoint, forceUpdate)
+        processInitializeFiles(manifest.initialize, rootEntry, manifest.data.rootEndpoint, forceUpdate)
+        if (!forceUpdate) applyIgnored(manifest.ignore, rootEntry)
+
+        return rootEntry
+    }
+
+    private fun processRegularFiles(files: List<ModpackFile>, root: Entry, rootEndpoint: String, forceUpdate: Boolean) {
+        files.forEach {
+            it.path.split("/").fold(root) { acc, pathElement ->
+                acc
+                    .addChildIfNotPresent(Entry(pathElement, EntryType.DIRECTORY))
+            }
+                .let { finalEntry ->
+                    finalEntry.type = EntryType.FILE
+                    finalEntry.size = 0 //TODO store size in modpack manifest?
+                    finalEntry.downloadLink = rootEndpoint + it.path
+                    finalEntry.forceDownloadFlag = forceUpdate
+                    finalEntry.hash = it.hash
+                }
+        }
+    }
+
+    private fun processInitializeFiles(
+        files: List<ModpackFile>,
+        root: Entry,
+        rootEndpoint: String,
+        forceUpdate: Boolean
+    ) {
+        files.forEach {
+            it.path.split("/").fold(root) { acc, pathElement ->
+                acc
+                    .addChildIfNotPresent(Entry(pathElement, EntryType.DIRECTORY))
+            }
+                .let { finalEntry ->
+                    finalEntry.type = EntryType.FILE
+                    finalEntry.initializeFlag = true
+                    finalEntry.size = 0 //TODO stoe size in modpack manifest?
+                    finalEntry.downloadLink = rootEndpoint + it.path
+                    finalEntry.forceDownloadFlag = forceUpdate
+                    finalEntry.hash = it.hash
+                }
+        }
+    }
+
+    private fun applyIgnored(files: List<IgnoredModpackFile>, root: Entry) {
+        files.forEach {
+            it.value.split("/").fold(root) { acc, pathElement ->
+                acc.addChildIfNotPresent(Entry(pathElement, EntryType.DIRECTORY, ignoreFlag = true))
+            }
+        }
     }
 
     private fun checkModpackManifestVersion(): Boolean = localManifestString == remoteManifestString
@@ -58,6 +113,6 @@ class ModpackUpdater(
 
     private fun saveManifest() {
         if (remoteManifestString == null) return
-        Files.write(Path.of("instances", instance.name, "modpack.json"), remoteManifestString.toByteArray())
+        Files.write(Paths.get("instances", instance.name, "modpack.json"), remoteManifestString.toByteArray())
     }
 }

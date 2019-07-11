@@ -12,18 +12,20 @@ class FileDownloader {
 
     private var totalSize: Long = 0
     private var downloadedSize: Long = 0
-    private var totalFiles: Int = 0
+    var totalFiles: Int = 0
+        private set
     private var totalFilesUnknownSize: Int = 0
     private var downloadedFiles: Int = 0
     private var downloadedFilesUnknownSize = 0
 
     private val maxRetry = 3
 
-    fun downloadFile(link: String, path: String, size: Long = 0) {
+    fun downloadFile(link: String, path: String, size: Long = 0): FileDownloader {
         downloadFile(link, path, size, 0)
+        return this
     }
 
-    private fun downloadFile(link: String, path: String, size: Long = 0, retry: Int) {
+    private fun downloadFile(link: String, path: String, size: Long = 0, retry: Int) {//TODO file queue
         if (size < 0) throw RuntimeException("File size less than 0.")
         if (retry > maxRetry) return
 
@@ -69,3 +71,6 @@ class FileDownloader {
 
     fun isDone(): Boolean = totalFiles == downloadedFiles
 }
+
+public fun download(downloads: List<DownloadableEntry>): FileDownloader =
+    downloads.fold(FileDownloader()) { acc, it -> acc.downloadFile(it.downloadLink, it.path, it.size) }

@@ -20,12 +20,12 @@ fun main() {
 
     val instanceManager = InstanceManager()
 
-//    val instance = instaceManager.createInstance(instaceManager.getLatestRelease(), "testInstance", null)
-//    val instance = instanceManager.getInstance("testInstance") ?: throw RuntimeException()
+//    val instance = instanceManager.createInstance(instanceManager.getLatestRelease(), "testInstance", null)
+    val instance = instanceManager.getInstance("testInstance") ?: throw RuntimeException()
 
-//    instanceManager.updateInstance(instance)
+    instanceManager.updateInstance(instance)
 
 //    auth.signIn(username, password)
 
-    launch<LauncherApplication>()
+//    launch<LauncherApplication>()
 }

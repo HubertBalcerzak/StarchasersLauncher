@@ -5,6 +5,7 @@ import com.mashape.unirest.http.Unirest
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 private const val MOJANG_AUTH_ROOT_URL = "https://authserver.mojang.com"
 private const val AUTH_CONFIG_LOCATION = "config/auth.conf"
@@ -76,7 +77,7 @@ class AuthManager {
             .asString()
 
         authConfiguration = null
-        Files.delete(Path.of(AUTH_CONFIG_LOCATION))
+        Files.delete(Paths.get(AUTH_CONFIG_LOCATION))
         return response.status == 200
     }
 
@@ -85,7 +86,7 @@ class AuthManager {
     private fun saveConfiguration() {
         if (authConfiguration == null) return
 
-        Files.write(Path.of(AUTH_CONFIG_LOCATION), gson.toJson(authConfiguration).toByteArray())
+        Files.write(Paths.get(AUTH_CONFIG_LOCATION), gson.toJson(authConfiguration).toByteArray())
     }
 
     private fun loadConfiguration() {

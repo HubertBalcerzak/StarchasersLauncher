@@ -2,10 +2,11 @@ package ovh.snet.starchaserslauncher.instance
 
 import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
-import ovh.snet.starchaserslauncher.downloader.FileDownloader
+import ovh.snet.starchaserslauncher.downloader.*
 import ovh.snet.starchaserslauncher.instance.dto.*
 import java.io.File
 import java.nio.file.Path
+import java.nio.file.Paths
 
 const val INSTANCE_STORAGE_DIR = "instances/"
 
@@ -55,8 +56,7 @@ class InstanceManager {
     }
 
     fun updateInstance(instance: Instance, force: Boolean = false): FileDownloader {
-        //TODO force update
-        val instanceRoot = Path.of(INSTANCE_STORAGE_DIR, instance.name)
+        val instanceRoot = Paths.get(INSTANCE_STORAGE_DIR, instance.name)
         instanceRoot.toFile().mkdir()
 
         val version = versionList.versions.find { it.id == instance.version }
@@ -66,19 +66,26 @@ class InstanceManager {
             )
         )
 
-        val downloader = FileDownloader()
+        val libs = downloadLibs(versionManifest, force)
+        val assetsEntry = downloadAssets(assets, true)
+        val client = downloadClient(versionManifest, force)
+        val root = Entry("root", EntryType.DIRECTORY)
+        root.addChildIfNotPresent(Entry(instance.name, EntryType.DIRECTORY))
+            .addChildIfNotPresent(
+                Entry("instance", EntryType.DIRECTORY)
+                    .addChild(libs)
+                    .addChild(assetsEntry)
+                    .addChild(client)
+            )
 
-        //TODO check file existence
-        downloadLibs(versionManifest, instanceRoot.toString(), downloader)
-        downloadAssets(assets, instanceRoot.toString(), downloader)
-        downloadClient(versionManifest, instanceRoot.toString(), downloader)
-
+        val downloader = download(verify(root, instanceRoot.toString()))
         //TODO remove
+        println(downloader.totalFiles)
         while (!downloader.isDone()) {
             println(downloader.getProgress())
             Thread.sleep(1000)
         }
-
+        println("finished")
         return downloader
     }
 
@@ -86,7 +93,7 @@ class InstanceManager {
 
     fun getInstance(name: String): Instance? = instanceConfiguration.getInstance(name)
 
-    private fun checkName(name: String): Boolean = !Path.of(INSTANCE_STORAGE_DIR, name).toFile().exists()
+    private fun checkName(name: String): Boolean = !Paths.get(INSTANCE_STORAGE_DIR, name).toFile().exists()
 
     private fun getManifests(version: MinecraftVersion): Pair<VersionManifest, AssetList> {
         val gson = Gson()
@@ -115,51 +122,78 @@ class InstanceManager {
         return Pair(versionManifest, assetList)
     }
 
-    private fun downloadLibs(versionManifest: VersionManifest, instanceRoot: String, downloader: FileDownloader) {
+    private fun downloadLibs(
+        versionManifest: VersionManifest,
+        force: Boolean
+    ): Entry {
+
+        val rootEntry = Entry(
+            "libraries",
+            EntryType.DIRECTORY
+        )
 
         versionManifest.libraries.forEach {
-            val path = it.downloads.artifact.path
-            val libraryRoot = Path.of(instanceRoot, "libraries").toString()
-            //TODO linux support
+            addLibrary(rootEntry, it.downloads.artifact, force)
 
-            downloader.downloadFile(
-                "https://libraries.minecraft.net/$path",
-                Path.of(libraryRoot, path).toString(),
-                it.downloads.artifact.size.toLong()
-            )
+            val os = System.getProperty("os.name").toLowerCase()
+            if (os.contains("win")
+                && it.downloads.classifiers?.nativesWindows != null
+            ) addLibrary(rootEntry, it.downloads.classifiers.nativesWindows, force)
 
-            if (it.downloads.classifiers?.nativesWindows != null) {
-                val nativesPath = it.downloads.classifiers.nativesWindows.path
-                downloader.downloadFile(
-                    "https://libraries.minecraft.net/$nativesPath",
-                    Path.of(libraryRoot, nativesPath).toString(),
-                    it.downloads.classifiers.nativesWindows.size.toLong()
-                )
-            }
+            if (os.contains("nix") || os.contains("nux") || os.contains("aix")
+                && it.downloads.classifiers?.nativesLinux != null
+            ) addLibrary(rootEntry, it.downloads.classifiers?.nativesLinux!!, force)
 
+        }
+        return rootEntry
+    }
+
+    private fun addLibrary(entry: Entry, artifact: LibraryArtifact, force: Boolean) {
+        artifact.path.split("/").fold(entry) { acc, e ->
+            acc.addChildIfNotPresent(Entry(e, EntryType.DIRECTORY))
+        }.let { finalEntry ->
+            finalEntry.initializeFlag = true
+            finalEntry.size = artifact.size.toLong()
+            finalEntry.type = EntryType.FILE
+            finalEntry.downloadLink = artifact.url
+            finalEntry.forceDownloadFlag = force
+            finalEntry.hash = artifact.sha1
         }
     }
 
-    private fun downloadAssets(assetList: AssetList, instanceRoot: String, downloader: FileDownloader) {
-        val assetRoot = Path.of(instanceRoot, "assets")
-        assetRoot.toFile().mkdirs()
+    private fun downloadAssets(assetList: AssetList, force: Boolean): Entry {
+        val rootEntry = Entry(
+            "assets",
+            EntryType.DIRECTORY
+        )
 
         assetList.objects.entries.forEach { asset ->
             val prefix = asset.value.hash.substring(0, 2)
-            Path.of(assetRoot.toString(), prefix).toFile().let { if (!it.exists()) it.mkdirs() }
-            downloader.downloadFile(
-                "http://resources.download.minecraft.net/$prefix/${asset.value.hash}",
-                Path.of(assetRoot.toString(), prefix, asset.value.hash).toString(),
-                asset.value.size.toLong()
-            )
+            rootEntry.addChildIfNotPresent(Entry(prefix, EntryType.DIRECTORY))
+                .addChildIfNotPresent(
+                    Entry(
+                        asset.value.hash,
+                        EntryType.FILE,
+                        initializeFlag = true,
+                        downloadLink = "http://resources.download.minecraft.net/$prefix/${asset.value.hash}",
+                        hash = asset.value.hash,
+                        size = asset.value.size.toLong(),
+                        forceDownloadFlag = force
+                    )
+                )
         }
+        return rootEntry
     }
 
-    private fun downloadClient(versionManifest: VersionManifest, instanceRoot: String, downloader: FileDownloader) {
-        downloader.downloadFile(
-            versionManifest.downloads.client.url,
-            Path.of(instanceRoot, "client.jar").toString(),
-            versionManifest.downloads.client.size.toLong()
+    private fun downloadClient(versionManifest: VersionManifest, force: Boolean): Entry {
+        return Entry(
+            "client.jar",
+            EntryType.FILE,
+            initializeFlag = true,
+            hash = versionManifest.downloads.client.sha1,
+            downloadLink = versionManifest.downloads.client.url,
+            size = versionManifest.downloads.client.size.toLong(),
+            forceDownloadFlag = force
         )
     }
 
@@ -170,7 +204,6 @@ class InstanceManager {
 
         val gson = Gson()
         return gson.fromJson(response.body, MinecraftVersionList::class.java)
-
     }
 
 }

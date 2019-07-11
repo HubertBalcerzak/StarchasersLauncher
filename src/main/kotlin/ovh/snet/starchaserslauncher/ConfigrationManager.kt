@@ -5,13 +5,14 @@ import ovh.snet.starchaserslauncher.auth.AuthConfiguration
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class ConfigrationManager {
 
     private val gson = Gson()
 
     var authConfiguration: AuthConfiguration? = gson.fromJson(
-        Files.readAllBytes(Path.of("config/auth.conf")).toString(),
+        Files.readAllBytes(Paths.get("config/auth.conf")).toString(),
         AuthConfiguration::class.java
     )
 
@@ -22,11 +23,11 @@ class ConfigrationManager {
 
 
     fun saveConfig(config: Any, name: String) = Files.write(
-        Path.of("config/$name.conf"), gson.toJson(config).toString().toByteArray()
+        Paths.get("config/$name.conf"), gson.toJson(config).toString().toByteArray()
     )
 
 
     fun loadConfig(name: String, clazz: Class<Any>): Any = gson.fromJson(
-        Files.readAllBytes(Path.of("config/$name.conf")).toString(), clazz
+        Files.readAllBytes(Paths.get("config/$name.conf")).toString(), clazz
     )
 }

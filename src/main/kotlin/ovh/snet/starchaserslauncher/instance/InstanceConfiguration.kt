@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 const val INSTANCES_CONFIG_LOCATION = "config/instances.conf"
 
@@ -16,7 +17,7 @@ class InstanceConfiguration() {
     init {
         val confFile = File(INSTANCES_CONFIG_LOCATION)
         instances = if (confFile.exists()) {
-            gson.fromJson(String(Files.readAllBytes(Path.of(INSTANCES_CONFIG_LOCATION))), InstanceList::class.java)
+            gson.fromJson(String(Files.readAllBytes(Paths.get(INSTANCES_CONFIG_LOCATION))), InstanceList::class.java)
                 .instances.fold(
                 HashMap(),
                 { map: HashMap<String, Instance>, instance: Instance -> map[instance.name] = instance; map })
@@ -25,7 +26,7 @@ class InstanceConfiguration() {
 
     fun save() {
         Files.write(
-            Path.of(INSTANCES_CONFIG_LOCATION),
+            Paths.get(INSTANCES_CONFIG_LOCATION),
             gson.toJson(InstanceList(instances.entries.map { it.value })).toByteArray()
         )
     }
