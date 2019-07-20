@@ -11,21 +11,21 @@ import java.lang.RuntimeException
 class LauncherApplication : App(MainView::class)
 
 fun main() {
+    launch<LauncherApplication>()
     val username = ""
     val password = ""
-    val auth = AuthManager()
+   // val auth = AuthManager()
 //    println(auth.authConfiguration?.accessToken)
 //    auth.validate()
 //    println(auth.authConfiguration?.accessToken)
 
-    val instanceManager = InstanceManager()
+    //val instanceManager = InstanceManager()
 
 //    val instance = instanceManager.createInstance(instanceManager.getLatestRelease(), "testInstance", null)
-    val instance = instanceManager.getInstance("testInstance") ?: throw RuntimeException()
+   // val instance = instanceManager.getInstance("testInstance") ?: throw RuntimeException()
 
-    instanceManager.updateInstance(instance)
+   // instanceManager.updateInstance(instance)
 
 //    auth.signIn(username, password)
 
-//    launch<LauncherApplication>()
 }
