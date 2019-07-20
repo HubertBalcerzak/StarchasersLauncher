@@ -14,6 +14,7 @@ class LoginFormView : Fragment(){
     private val password : PasswordField by fxid("password")
     private val remember : CheckBox by fxid("remember")
     private val controller : LoginController by inject()
+
     @FXML
     fun login(){
         controller.logIn(login.text, password.text)
