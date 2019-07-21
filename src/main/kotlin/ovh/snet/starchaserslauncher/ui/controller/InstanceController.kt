@@ -17,13 +17,11 @@ class InstanceController : Controller() {
     }
 
     fun createModpackInstance(name: String, url: String) {
-        //TODO change to new method added by Hubertus
-        instanceManager.createInstance(getMinecraftVersions().get(0).minecraftVersion, name, url)
+        instanceManager.createInstance(name, url)
     }
 
     fun createVanillaInstance(name: String, mcVersion: DisplayMinecraftVersion){
-        //TODO change to new method added by Hubertus
-        instanceManager.createInstance(mcVersion.minecraftVersion, name, "")
+        instanceManager.createInstance(mcVersion.minecraftVersion, name)
     }
 }
 

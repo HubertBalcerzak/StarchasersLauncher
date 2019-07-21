@@ -15,6 +15,7 @@ class InstanceConfiguration() {
 
 
     init {
+        //TODO better error handling(empty config file, corrupt config)
         val confFile = File(INSTANCES_CONFIG_LOCATION)
         instances = if (confFile.exists()) {
             gson.fromJson(String(Files.readAllBytes(Paths.get(INSTANCES_CONFIG_LOCATION))), InstanceList::class.java)

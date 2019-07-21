@@ -99,13 +99,16 @@ class InstanceManager {
             )
 
         val downloader = download(verify(root, instanceRoot.toString()))
-        //TODO remove
-        println(downloader.totalFiles)
-        while (!downloader.isDone()) {
-            println(downloader.getProgress())
-            Thread.sleep(1000)
-        }
-        println("finished")
+        downloader.start()
+
+//        TODO remove
+//        println(downloader.totalFiles)
+//        while (!downloader.isDone()) {
+//            println(downloader.getProgress())
+//            Thread.sleep(1000)
+//        }
+//        println("finished")
+
         return downloader
     }
 

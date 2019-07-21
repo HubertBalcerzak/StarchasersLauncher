@@ -19,45 +19,68 @@ class FileDownloader {
     private var downloadedFiles: Int = 0
     private var downloadedFilesUnknownSize = 0
 
-//    private val fileQueue = Queue
+    private val fileQueue = ArrayDeque<Pair<DownloadableEntry, Int>>()
+    private val failedDownloads = mutableListOf<DownloadableEntry>()
+    private val currentlyDownloading = mutableListOf<DownloadableEntry>()
+
 
     private val maxRetry = 3
 
-    fun downloadFile(link: String, path: String, size: Long = 0): FileDownloader {
-        downloadFile(link, path, size, 0)
+    fun downloadFile(downloadableEntry: DownloadableEntry): FileDownloader {
+        addToQueue(downloadableEntry, 0)
         return this
     }
 
-    private fun downloadFile(link: String, path: String, size: Long = 0, retry: Int) {//TODO file queue
-        if (size < 0) throw RuntimeException("File size less than 0.")
-        if (retry > maxRetry) return
-
+    private fun addToQueue(downloadableEntry: DownloadableEntry, retry: Int) {
         if (retry == 0) {
-            totalSize += size
+            totalSize += downloadableEntry.size
             totalFiles++
-            if (size == 0L) totalFilesUnknownSize++
+            if (downloadableEntry.size == 0L) totalFilesUnknownSize++
         }
 
-        Unirest.get(link)
+        if (retry > maxRetry)
+            failedDownloads.add(downloadableEntry)
+        else
+            fileQueue.add(Pair(downloadableEntry, retry))
+
+//        if(currentlyDownloading.size <= 3) fileQueue.poll().let { startDownload(it.first, it.second) }
+    }
+
+    private fun startDownload(entry: DownloadableEntry, retry: Int) {
+        currentlyDownloading += entry
+
+        if (entry.size < 0) throw RuntimeException("File size less than 0.")
+//        if (retry > maxRetry) return
+
+        Unirest.get(entry.downloadLink)
             .asBinaryAsync(object : Callback<InputStream> {
                 override fun cancelled() {
                     println("download cancelled")
-                    //TODO some console window?
+                    //TODO ???
                 }
 
                 override fun completed(response: HttpResponse<InputStream>?) {
-                    File(path.replaceAfterLast("\\", "")).mkdirs()
-                    File(path).outputStream().use { os -> response?.body?.copyTo(os) }
-                    downloadedSize += size
+                    File(entry.path.replaceAfterLast("\\", "")).mkdirs()
+                    File(entry.path).outputStream().use { os -> response?.body?.copyTo(os) }
+                    downloadedSize += entry.size
                     downloadedFiles++
-                    if (size == 0L) downloadedFilesUnknownSize++
+                    if (entry.size == 0L) downloadedFilesUnknownSize++
+                    currentlyDownloading -= entry
+
+                    if (fileQueue.size >= 0) fileQueue.poll().let { startDownload(it.first, it.second) }
                 }
 
                 override fun failed(e: UnirestException?) {
-                    println("download $link failed try $retry")
-                    downloadFile(link, path, size, retry + 1)
+                    println("download ${entry.downloadLink} failed try $retry")
+                    currentlyDownloading -= entry
+                    addToQueue(entry, retry + 1)
+                    if (fileQueue.size >= 0) fileQueue.poll().let { startDownload(it.first, it.second) }
                 }
             })
+    }
+
+    fun start() {
+        fileQueue.poll().let { startDownload(it.first, it.second) }
     }
 
     fun getProgress(): Float {
@@ -73,7 +96,11 @@ class FileDownloader {
     }
 
     fun isDone(): Boolean = totalFiles == downloadedFiles
+
+    fun hasError(): Boolean = failedDownloads.size > 0
+
+    fun getErrors(): List<DownloadableEntry> = failedDownloads.toList()
 }
 
 public fun download(downloads: List<DownloadableEntry>): FileDownloader =
-    downloads.fold(FileDownloader()) { acc, it -> acc.downloadFile(it.downloadLink, it.path, it.size) }
+    downloads.fold(FileDownloader()) { acc, it -> acc.downloadFile(it) }
