@@ -4,6 +4,8 @@ import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
 import ovh.snet.starchaserslauncher.downloader.*
 import ovh.snet.starchaserslauncher.instance.dto.*
+import ovh.snet.starchaserslauncher.modpack.ModpackData
+import ovh.snet.starchaserslauncher.modpack.ModpackManifest
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -13,11 +15,13 @@ const val INSTANCE_STORAGE_DIR = "instances/"
 class InstanceManager {
     private var versionList: MinecraftVersionList
     private val instanceConfiguration = InstanceConfiguration()
+    val gson = Gson()
 
 
     init {
         versionList = initVersionList()
         initVersionList()
+        File("config").mkdir()
         val instancesDir = File(INSTANCE_STORAGE_DIR)
         if (!instancesDir.exists()) instancesDir.mkdir()
     }
@@ -37,21 +41,37 @@ class InstanceManager {
     }
 
 
-    fun createInstance(version: MinecraftVersion, name: String, modpackLink: String?): Instance {
+    fun createInstance(version: MinecraftVersion, name: String): Instance {
         if (instanceConfiguration.getInstance(name) != null) {
             //TODO handle error in gui
             println("name taken")
             throw InstanceNameTakenException(name)
         }
 
-        val instance = if (modpackLink == null)
-            Instance(name, version.id, "Vanilla", "1G", modpackLink)
-        else
-            Instance(name, version.id, "modpack", "tmp", modpackLink)
+        val instance = Instance(name, version.id, "Vanilla", "1G", null)
 
         instanceConfiguration.addInstance(instance)
         //TODO download modpack manifest
 
+        return instance
+    }
+
+    fun createInstance(name: String, modpackLink: String): Instance {
+        if (instanceConfiguration.getInstance(name) != null) {
+            //TODO handle error in gui
+            println("name taken")
+            throw InstanceNameTakenException(name)
+        }
+
+        val manifest = getModpackManifest(modpackLink)
+        val instance = Instance(
+            name,
+            manifest.data.mcVersion,
+            manifest.data.name,
+            manifest.data.xmx,
+            null
+        )
+        instanceConfiguration.addInstance(instance)
         return instance
     }
 
@@ -96,7 +116,6 @@ class InstanceManager {
     private fun checkName(name: String): Boolean = !Paths.get(INSTANCE_STORAGE_DIR, name).toFile().exists()
 
     private fun getManifests(version: MinecraftVersion): Pair<VersionManifest, AssetList> {
-        val gson = Gson()
         val manifestResponse = Unirest.get(version.url)
             .asString()
         if (manifestResponse.status != 200) {
@@ -204,6 +223,15 @@ class InstanceManager {
 
         val gson = Gson()
         return gson.fromJson(response.body, MinecraftVersionList::class.java)
+    }
+
+    private fun getModpackManifest(link: String): ModpackManifest {
+        val response = Unirest.get(link)
+            .asString()
+        if (response.status != 200) {
+            //TODO exception
+        }
+        return gson.fromJson(link, ModpackManifest::class.java)
     }
 
 }

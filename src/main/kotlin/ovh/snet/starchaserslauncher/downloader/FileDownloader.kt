@@ -7,6 +7,7 @@ import com.mashape.unirest.http.exceptions.UnirestException
 import java.io.File
 import java.io.InputStream
 import java.lang.RuntimeException
+import java.util.*
 
 class FileDownloader {
 
@@ -17,6 +18,8 @@ class FileDownloader {
     private var totalFilesUnknownSize: Int = 0
     private var downloadedFiles: Int = 0
     private var downloadedFilesUnknownSize = 0
+
+//    private val fileQueue = Queue
 
     private val maxRetry = 3
 

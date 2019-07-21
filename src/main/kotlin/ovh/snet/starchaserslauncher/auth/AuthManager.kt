@@ -90,6 +90,7 @@ class AuthManager {
     }
 
     private fun loadConfiguration() {
+        File("config").mkdir()
         val confFile = File(AUTH_CONFIG_LOCATION)
         if (!confFile.exists()) {
             authConfiguration = null

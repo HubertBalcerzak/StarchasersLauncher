@@ -39,7 +39,7 @@ private fun traverseDir(
     } else if (currentFile.isDirectory) {
         return if (currentEntry == null || currentEntry.type == EntryType.FILE) {
             currentFile.deleteRecursively()
-            listOf()
+            listOf()//TODO probably an error
         } else {
             currentEntry.visited = true
             return currentFile.listFiles()!!.map { traverseDir(it, currentEntry, fileVerifier) }
