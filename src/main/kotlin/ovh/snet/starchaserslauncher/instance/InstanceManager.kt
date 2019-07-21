@@ -3,11 +3,12 @@ package ovh.snet.starchaserslauncher.instance
 import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
 import ovh.snet.starchaserslauncher.downloader.*
+import ovh.snet.starchaserslauncher.exception.DownloadErrorException
+import ovh.snet.starchaserslauncher.exception.InstanceNameExistsException
+import ovh.snet.starchaserslauncher.exception.UnknownVersionException
 import ovh.snet.starchaserslauncher.instance.dto.*
-import ovh.snet.starchaserslauncher.modpack.ModpackData
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
 import java.io.File
-import java.nio.file.Path
 import java.nio.file.Paths
 
 const val INSTANCE_STORAGE_DIR = "instances/"
@@ -41,11 +42,12 @@ class InstanceManager {
     }
 
 
+    /**
+     * @throws InstanceNameExistsException
+     */
     fun createInstance(version: MinecraftVersion, name: String): Instance {
         if (instanceConfiguration.getInstance(name) != null) {
-            //TODO handle error in gui
-            println("name taken")
-            throw InstanceNameTakenException(name)
+            throw InstanceNameExistsException()
         }
 
         val instance = Instance(name, version.id, "Vanilla", "1G", null)
@@ -56,11 +58,12 @@ class InstanceManager {
         return instance
     }
 
+    /**
+     * @throws InstanceNameExistsException
+     */
     fun createInstance(name: String, modpackLink: String): Instance {
         if (instanceConfiguration.getInstance(name) != null) {
-            //TODO handle error in gui
-            println("name taken")
-            throw InstanceNameTakenException(name)
+            throw InstanceNameExistsException()
         }
 
         val manifest = getModpackManifest(modpackLink)
@@ -75,6 +78,9 @@ class InstanceManager {
         return instance
     }
 
+    /**
+     * @throws UnknownVersionException
+     */
     fun updateInstance(instance: Instance, force: Boolean = false): FileDownloader {
         val instanceRoot = Paths.get(INSTANCE_STORAGE_DIR, instance.name)
         instanceRoot.toFile().mkdir()
@@ -118,12 +124,15 @@ class InstanceManager {
 
     private fun checkName(name: String): Boolean = !Paths.get(INSTANCE_STORAGE_DIR, name).toFile().exists()
 
+    /**
+     * @throws DownloadErrorException
+     */
     private fun getManifests(version: MinecraftVersion): Pair<VersionManifest, AssetList> {
         val manifestResponse = Unirest.get(version.url)
             .asString()
         if (manifestResponse.status != 200) {
-            println("Error downloading manifest ${manifestResponse.status}")
-            //TODO handle error in gui
+//            println("Error downloading manifest ${manifestResponse.status}")
+            throw DownloadErrorException("version manifest")
         }
 
         val versionManifest = gson.fromJson(
@@ -135,8 +144,8 @@ class InstanceManager {
         val assetListResponse = Unirest.get(versionManifest.assetIndex.url).asString()
 
         if (manifestResponse.status != 200) {
-            println("Error downloading asset list ${assetListResponse.status}")
-            //TODO handle error in gui
+//            println("Error downloading asset list ${assetListResponse.status}")
+            throw DownloadErrorException("asset list")
         }
 
         val assetList = gson.fromJson(assetListResponse.body, AssetList::class.java)
@@ -228,11 +237,14 @@ class InstanceManager {
         return gson.fromJson(response.body, MinecraftVersionList::class.java)
     }
 
+    /**
+     * @throws DownloadErrorException
+     */
     private fun getModpackManifest(link: String): ModpackManifest {
         val response = Unirest.get(link)
             .asString()
         if (response.status != 200) {
-            //TODO exception
+            throw DownloadErrorException("modpack manifest")
         }
         return gson.fromJson(link, ModpackManifest::class.java)
     }

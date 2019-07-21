@@ -2,6 +2,8 @@ package ovh.snet.starchaserslauncher.auth
 
 import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
+import ovh.snet.starchaserslauncher.exception.MinecraftNotBoughtException
+import ovh.snet.starchaserslauncher.exception.SignInErrorException
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -21,6 +23,10 @@ class AuthManager {
     }
 
 
+    /**
+     * @throws SignInErrorException
+     * @throws MinecraftNotBoughtException
+     */
     fun signIn(username: String, password: String) {
         val response = Unirest
             .post("$MOJANG_AUTH_ROOT_URL/authenticate")
@@ -29,13 +35,12 @@ class AuthManager {
             .asString()
         if (response.status != 200) {
             val error = gson.fromJson(response.body, ErrorDTO::class.java)
-            println(error.errorMessage)
-            //TODO handle in gui
+//            println(error.errorMessage)
+            throw SignInErrorException()
         } else {
             val auth = gson.fromJson(response.body, AuthenticationResponseDTO::class.java)
             if (auth.selectedProfile == null) {
-                //TODO handle error
-                return
+                throw MinecraftNotBoughtException()
             }
 
             authConfiguration = AuthConfiguration(

@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.mashape.unirest.http.Unirest
 import ovh.snet.starchaserslauncher.downloader.Entry
 import ovh.snet.starchaserslauncher.downloader.EntryType
+import ovh.snet.starchaserslauncher.exception.DownloadErrorException
 import ovh.snet.starchaserslauncher.modpack.IgnoredModpackFile
 import ovh.snet.starchaserslauncher.modpack.ModpackFile
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
@@ -84,7 +85,12 @@ class ModpackUpdater(
         }
     }
 
-    private fun checkModpackManifestVersion(): Boolean = localManifestString == remoteManifestString
+    private fun checkModpackManifestVersion(): Boolean {
+        if (localManifestString.isNullOrBlank() && remoteManifestString.isNullOrBlank())
+            throw DownloadErrorException("modpack manifest")
+        if (remoteManifestString.isNullOrBlank()) return true
+        return remoteManifestString == localManifestString
+    }
 
     private fun loadModpackManifest(): ModpackManifest {
         return if (checkModpackManifestVersion()) gson.fromJson(localManifestString, ModpackManifest::class.java)
@@ -107,7 +113,6 @@ class ModpackUpdater(
             .let {
                 return if (it.status == 200) it.body
                 else null
-                //TODO hanlde error in gui
             }
     }
 
