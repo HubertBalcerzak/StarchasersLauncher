@@ -25,4 +25,10 @@ class FileVerifier {
 
     fun verifyHash(path: String, hash: String): Boolean = verifyHash(Paths.get(path), hash)
     fun verifyHash(file: File, hash: String): Boolean = verifyHash(file.toPath(), hash)
+
+    fun getHash(path: String) = md.digest(Files.readAllBytes(Paths.get(path)))
+        .let { BigInteger(1, it) }
+        .let { it.toString(16) }
+        .let { "0".repeat(40 - it.length) + it }
 }
+

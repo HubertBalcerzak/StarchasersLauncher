@@ -50,7 +50,7 @@ class InstanceManager {
             throw InstanceNameExistsException()
         }
 
-        val instance = Instance(name, version.id, "Vanilla", "1G", null)
+        val instance = Instance(name, version.id, "Vanilla", "1G")
 
         instanceConfiguration.addInstance(instance)
         //TODO download modpack manifest
@@ -72,7 +72,7 @@ class InstanceManager {
             manifest.data.mcVersion,
             manifest.data.name,
             manifest.data.xmx,
-            null
+            modpackLink
         )
         instanceConfiguration.addInstance(instance)
         return instance
@@ -92,6 +92,8 @@ class InstanceManager {
             )
         )
 
+        val modpackUpdater = ModpackUpdater(instance)
+
         val libs = downloadLibs(versionManifest, force)
         val assetsEntry = downloadAssets(assets, true)
         val client = downloadClient(versionManifest, force)
@@ -102,18 +104,19 @@ class InstanceManager {
                     .addChild(libs)
                     .addChild(assetsEntry)
                     .addChild(client)
+                    .addChild(modpackUpdater.updateModpack(force))
             )
 
         val downloader = download(verify(root, instanceRoot.toString()))
         downloader.start()
 
 //        TODO remove
-//        println(downloader.totalFiles)
-//        while (!downloader.isDone()) {
-//            println(downloader.getProgress())
-//            Thread.sleep(1000)
-//        }
-//        println("finished")
+        println(downloader.totalFiles)
+        while (!downloader.isDone()) {
+            println(downloader.getProgress())
+            Thread.sleep(1000)
+        }
+        println("finished")
 
         return downloader
     }
@@ -164,7 +167,7 @@ class InstanceManager {
         )
 
         versionManifest.libraries.forEach {
-            addLibrary(rootEntry, it.downloads.artifact, force)
+            if (it.downloads.artifact != null) addLibrary(rootEntry, it.downloads.artifact, force)
 
             val os = System.getProperty("os.name").toLowerCase()
             if (os.contains("win")
@@ -180,6 +183,7 @@ class InstanceManager {
     }
 
     private fun addLibrary(entry: Entry, artifact: LibraryArtifact, force: Boolean) {
+        println(artifact.path)
         artifact.path.split("/").fold(entry) { acc, e ->
             acc.addChildIfNotPresent(Entry(e, EntryType.DIRECTORY))
         }.let { finalEntry ->
@@ -246,7 +250,7 @@ class InstanceManager {
         if (response.status != 200) {
             throw DownloadErrorException("modpack manifest")
         }
-        return gson.fromJson(link, ModpackManifest::class.java)
+        return gson.fromJson(response.body, ModpackManifest::class.java)
     }
 
 }
