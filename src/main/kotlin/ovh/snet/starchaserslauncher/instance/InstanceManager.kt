@@ -104,7 +104,7 @@ class InstanceManager {
                     .addChild(libs)
                     .addChild(assetsEntry)
                     .addChild(client)
-                    .addChild(modpackUpdater.updateModpack(force))
+                    //.addChild(modpackUpdater.updateModpack(force))
             )
 
         val downloader = download(verify(root, instanceRoot.toString()))
