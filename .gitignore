@@ -2,3 +2,7 @@ out/
 .gradle/
 .idea/
 config/
+instances/
+*.iws
+*.ipr
+*.iml
