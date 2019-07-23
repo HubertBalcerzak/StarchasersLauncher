@@ -80,7 +80,8 @@ class FileDownloader {
     }
 
     fun start() {
-        fileQueue.poll().let { startDownload(it.first, it.second) }
+        if (fileQueue.isNotEmpty())
+            fileQueue.poll().let { startDownload(it.first, it.second) }
     }
 
     fun getProgress(): Float {

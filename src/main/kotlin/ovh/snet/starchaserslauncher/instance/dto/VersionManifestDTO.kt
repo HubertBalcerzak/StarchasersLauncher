@@ -35,7 +35,7 @@ class Library(
 )
 
 class LibraryDownload(
-    val artifact: LibraryArtifact,
+    val artifact: LibraryArtifact?,
     val classifiers: LibraryClassifiers?
 )
 

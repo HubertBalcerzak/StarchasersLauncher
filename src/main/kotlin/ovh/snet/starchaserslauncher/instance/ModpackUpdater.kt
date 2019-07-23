@@ -69,7 +69,7 @@ class ModpackUpdater(
                 .let { finalEntry ->
                     finalEntry.type = EntryType.FILE
                     finalEntry.initializeFlag = true
-                    finalEntry.size = 0 //TODO stoe size in modpack manifest?
+                    finalEntry.size = 0 //TODO store size in modpack manifest?
                     finalEntry.downloadLink = rootEndpoint + it.path
                     finalEntry.forceDownloadFlag = forceUpdate
                     finalEntry.hash = it.hash

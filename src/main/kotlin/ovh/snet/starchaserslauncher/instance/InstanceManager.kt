@@ -53,8 +53,6 @@ class InstanceManager {
         val instance = Instance(name, version.id, "Vanilla", "1G")
 
         instanceConfiguration.addInstance(instance)
-        //TODO download modpack manifest
-
         return instance
     }
 
@@ -86,37 +84,36 @@ class InstanceManager {
         instanceRoot.toFile().mkdir()
 
         val version = versionList.versions.find { it.id == instance.version }
-        val (versionManifest, assets) = getManifests(
-            version ?: throw UnknownVersionException(
-                instance.version
-            )
-        )
-
-        val modpackUpdater = ModpackUpdater(instance)
+        val (versionManifest, assets) = getManifests(version ?: throw UnknownVersionException(instance.version))
 
         val libs = downloadLibs(versionManifest, force)
-        val assetsEntry = downloadAssets(assets, true)
+        val assetsEntry = downloadAssets(assets, force)
         val client = downloadClient(versionManifest, force)
         val root = Entry("root", EntryType.DIRECTORY)
+
         root.addChildIfNotPresent(Entry(instance.name, EntryType.DIRECTORY))
             .addChildIfNotPresent(
                 Entry("instance", EntryType.DIRECTORY)
                     .addChild(libs)
                     .addChild(assetsEntry)
                     .addChild(client)
-                    //.addChild(modpackUpdater.updateModpack(force))
+                    .apply {
+                        if (instance.manifestLink.isNotBlank()) addChild(ModpackUpdater(instance).updateModpack(force))
+                    }
             )
-
-        val downloader = download(verify(root, instanceRoot.toString()))
+        val list = verify(root, instanceRoot.toString())
+        val downloader = download(list)
         downloader.start()
 
 //        TODO remove
+///////////////////////
         println(downloader.totalFiles)
         while (!downloader.isDone()) {
             println(downloader.getProgress())
             Thread.sleep(1000)
         }
         println("finished")
+///////////////////////
 
         return downloader
     }
@@ -183,11 +180,10 @@ class InstanceManager {
     }
 
     private fun addLibrary(entry: Entry, artifact: LibraryArtifact, force: Boolean) {
-        println(artifact.path)
         artifact.path.split("/").fold(entry) { acc, e ->
             acc.addChildIfNotPresent(Entry(e, EntryType.DIRECTORY))
         }.let { finalEntry ->
-            finalEntry.initializeFlag = true
+            finalEntry.initializeFlag = false
             finalEntry.size = artifact.size.toLong()
             finalEntry.type = EntryType.FILE
             finalEntry.downloadLink = artifact.url
@@ -209,7 +205,7 @@ class InstanceManager {
                     Entry(
                         asset.value.hash,
                         EntryType.FILE,
-                        initializeFlag = true,
+                        initializeFlag = false,
                         downloadLink = "http://resources.download.minecraft.net/$prefix/${asset.value.hash}",
                         hash = asset.value.hash,
                         size = asset.value.size.toLong(),
