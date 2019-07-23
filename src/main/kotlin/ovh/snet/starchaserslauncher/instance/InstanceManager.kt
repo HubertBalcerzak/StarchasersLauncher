@@ -80,29 +80,29 @@ class InstanceManager {
      * @throws UnknownVersionException
      */
     fun updateInstance(instance: Instance, force: Boolean = false): FileDownloader {
-        val instanceRoot = Paths.get(INSTANCE_STORAGE_DIR, instance.name)
+        val instanceRoot = Paths.get(INSTANCE_STORAGE_DIR, instance.name, "instance")
         instanceRoot.toFile().mkdir()
 
         val version = versionList.versions.find { it.id == instance.version }
         val (versionManifest, assets) = getManifests(version ?: throw UnknownVersionException(instance.version))
 
-        val libs = downloadLibs(versionManifest, force)
+        val (libs, natives) = downloadLibs(versionManifest, force)
         val assetsEntry = downloadAssets(assets, force)
         val client = downloadClient(versionManifest, force)
         val root = Entry("root", EntryType.DIRECTORY)
 
-        root.addChildIfNotPresent(Entry(instance.name, EntryType.DIRECTORY))
+        root//.addChildIfNotPresent(Entry(instance.name, EntryType.DIRECTORY))
             .addChildIfNotPresent(
                 Entry("instance", EntryType.DIRECTORY)
                     .addChild(libs)
+                    .addChild(natives)
                     .addChild(assetsEntry)
                     .addChild(client)
                     .apply {
                         if (instance.manifestLink.isNotBlank()) addChild(ModpackUpdater(instance).updateModpack(force))
                     }
             )
-        val list = verify(root, instanceRoot.toString())
-        val downloader = download(list)
+        val downloader = download(verify(root, instanceRoot.toString()))
         downloader.start()
 
 //        TODO remove
@@ -122,7 +122,9 @@ class InstanceManager {
 
     fun getInstance(name: String): Instance? = instanceConfiguration.getInstance(name)
 
-    private fun checkName(name: String): Boolean = !Paths.get(INSTANCE_STORAGE_DIR, name).toFile().exists()
+    fun unpackNatives(instance: Instance) {
+
+    }
 
     /**
      * @throws DownloadErrorException
@@ -156,10 +158,14 @@ class InstanceManager {
     private fun downloadLibs(
         versionManifest: VersionManifest,
         force: Boolean
-    ): Entry {
+    ): Pair<Entry, Entry> {
 
         val rootEntry = Entry(
             "libraries",
+            EntryType.DIRECTORY
+        )
+        val natives = Entry(
+            "natives-jars",
             EntryType.DIRECTORY
         )
 
@@ -169,14 +175,14 @@ class InstanceManager {
             val os = System.getProperty("os.name").toLowerCase()
             if (os.contains("win")
                 && it.downloads.classifiers?.nativesWindows != null
-            ) addLibrary(rootEntry, it.downloads.classifiers.nativesWindows, force)
+            ) addNative(natives, it.downloads.classifiers.nativesWindows, force)
 
             if (os.contains("nix") || os.contains("nux") || os.contains("aix")
                 && it.downloads.classifiers?.nativesLinux != null
-            ) addLibrary(rootEntry, it.downloads.classifiers?.nativesLinux!!, force)
+            ) addNative(natives, it.downloads.classifiers?.nativesLinux!!, force)
 
         }
-        return rootEntry
+        return Pair(rootEntry, natives)
     }
 
     private fun addLibrary(entry: Entry, artifact: LibraryArtifact, force: Boolean) {
@@ -190,6 +196,22 @@ class InstanceManager {
             finalEntry.forceDownloadFlag = force
             finalEntry.hash = artifact.sha1
         }
+    }
+
+    private fun addNative(entry: Entry, artifact: LibraryArtifact, force: Boolean) {
+        val name = artifact.path.substringAfterLast("/")
+        entry.addChildIfNotPresent(
+            Entry(
+                name,
+                EntryType.FILE,
+                ignoreFlag = false,
+                initializeFlag = false,
+                forceDownloadFlag = force,
+                hash = artifact.sha1,
+                downloadLink = artifact.url,
+                size = artifact.size.toLong()
+            )
+        )
     }
 
     private fun downloadAssets(assetList: AssetList, force: Boolean): Entry {
@@ -248,5 +270,6 @@ class InstanceManager {
         }
         return gson.fromJson(response.body, ModpackManifest::class.java)
     }
+
 
 }
