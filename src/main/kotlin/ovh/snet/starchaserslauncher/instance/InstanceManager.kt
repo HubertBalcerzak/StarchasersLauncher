@@ -10,6 +10,7 @@ import ovh.snet.starchaserslauncher.instance.dto.*
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
 import java.io.File
 import java.nio.file.Paths
+import java.util.zip.ZipFile
 
 const val INSTANCE_STORAGE_DIR = "instances/"
 
@@ -122,8 +123,30 @@ class InstanceManager {
 
     fun getInstance(name: String): Instance? = instanceConfiguration.getInstance(name)
 
+    /**
+     * To be safe call if at least one file was updated
+     */
     fun unpackNatives(instance: Instance) {
+        val nativesRoot = Paths.get("instances", instance.name, "natives").toFile()
+        nativesRoot.deleteRecursively()
+        nativesRoot.mkdirs()
 
+        val jarsRoot = Paths.get("instances", instance.name, "instance", "natives-jars")
+
+        jarsRoot.toFile().listFiles()?.forEach {
+            ZipFile(it).use { zip ->
+                zip.entries().asSequence().forEach { entry ->
+                    if (entry.name.endsWith(".dll") || entry.name.endsWith(".so")) {
+                        zip.getInputStream(entry).use { input ->
+                            Paths.get(nativesRoot.path, entry.name).toFile().outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
     }
 
     /**
