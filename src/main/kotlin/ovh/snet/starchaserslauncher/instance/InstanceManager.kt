@@ -107,7 +107,7 @@ class InstanceManager {
      */
     fun updateInstance(instance: Instance, force: Boolean = false): FileDownloader {
         val instanceRoot = Paths.get(INSTANCE_STORAGE_DIR, instance.name, "instance")
-        instanceRoot.toFile().mkdir()
+        instanceRoot.toFile().mkdirs()
 
         val version = versionList.versions.find { it.id == instance.version }
         val (versionManifest, assets) = getManifests(version ?: throw UnknownVersionException(instance.version))
