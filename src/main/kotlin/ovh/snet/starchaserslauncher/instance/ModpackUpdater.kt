@@ -27,11 +27,12 @@ class ModpackUpdater(
         remoteManifestString = getRemoteString()
     }
 
-    fun updateModpack(libsEntry: Entry, forceUpdate: Boolean): Entry {
+    fun updateModpack(libsEntry: Entry, rootEntry: Entry, forceUpdate: Boolean): Entry {
+        Paths.get("instances", instance.name).toFile().mkdirs()
         val manifest = loadModpackManifest()
 //        val verify = !checkModpackManifestVersion()
 
-        val rootEntry = Entry(".minecraft", EntryType.DIRECTORY)
+//        val rootEntry = Entry(".minecraft", EntryType.DIRECTORY)
 
         processRegularFiles(manifest.update, rootEntry, manifest.data.rootEndpoint, forceUpdate)
         processForgeLibs(libsEntry, manifest.forgeLibs, forceUpdate)

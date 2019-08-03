@@ -116,17 +116,16 @@ class InstanceManager {
         val assetsEntry = downloadAssets(assets, force)
         val client = downloadClient(versionManifest, force)
         val root = Entry("root", EntryType.DIRECTORY)
-
+        val instanceEntry = Entry("instance", EntryType.DIRECTORY)
+        if (!instance.isVanilla) ModpackUpdater(instance).updateModpack(libs, instanceEntry, force)
         root//.addChildIfNotPresent(Entry(instance.name, EntryType.DIRECTORY))
             .addChildIfNotPresent(
-                Entry("instance", EntryType.DIRECTORY)
+                instanceEntry
                     .addChild(libs)
                     .addChild(natives)
                     .addChild(assetsEntry)
                     .addChild(client)
-                    .apply {
-                        if (!instance.isVanilla) addChild(ModpackUpdater(instance).updateModpack(libs, force))
-                    }
+
             )
         val downloader = download(verify(root, instanceRoot.toString()))
         downloader.start()

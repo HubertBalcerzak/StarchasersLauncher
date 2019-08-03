@@ -31,6 +31,7 @@ private fun processDir(rootFile: File, path: String): List<ModpackFile> {
         ?: emptyList()
 }
 
+/*
 fun main(args: Array<String>) {
     if (args.isNotEmpty() && args[0] == "generate") {
         val creator = ModpackManifestCreator()
@@ -63,6 +64,7 @@ fun main(args: Array<String>) {
         launch<LauncherApplication>()
     }
 }
+*/
 
 fun main() {
 
@@ -71,7 +73,8 @@ fun main() {
     val instanceManager = InstanceManager()
 //    val instance = instanceManager.createInstance(instanceManager.getVersionList(true).findLast { it.id == "1.12.2" }!!, "test2")
 //    val instance = instanceManager.createModdedInstanceOffline("modpackOffline", "modpack.json")
-    val instance = InstanceManager().getInstance("modpackOffline")!!
+//    val instance = instanceManager.createModdedInstance("modpackOnline", "https://img.bymarcin.com/immersivefactory/modpack.json")
+    val instance = InstanceManager().getInstance("modpackOnline")!!
     instanceManager.updateInstance(instance!!)
     instanceManager.unpackNatives(instance)
     var mld = MinecraftLauncherData(
