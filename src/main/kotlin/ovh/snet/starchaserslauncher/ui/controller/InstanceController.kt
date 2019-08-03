@@ -17,7 +17,7 @@ class InstanceController : Controller() {
     }
 
     fun createModpackInstance(name: String, url: String) {
-        instanceManager.createInstance(name, url)
+        instanceManager.createModdedInstance(name, url)
     }
 
     fun createVanillaInstance(name: String, mcVersion: DisplayMinecraftVersion){

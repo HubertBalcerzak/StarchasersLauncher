@@ -9,6 +9,7 @@ import ovh.snet.starchaserslauncher.exception.UnknownVersionException
 import ovh.snet.starchaserslauncher.instance.dto.*
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.zip.ZipFile
 
@@ -60,7 +61,7 @@ class InstanceManager {
     /**
      * @throws InstanceNameExistsException
      */
-    fun createInstance(name: String, modpackLink: String): Instance {
+    fun createModdedInstance(name: String, modpackLink: String): Instance {
         if (instanceConfiguration.getInstance(name) != null) {
             throw InstanceNameExistsException()
         }
@@ -71,9 +72,33 @@ class InstanceManager {
             manifest.data.mcVersion,
             manifest.data.name,
             manifest.data.xmx,
-            modpackLink
+            modpackLink,
+            false
         )
         instanceConfiguration.addInstance(instance)
+        return instance
+    }
+
+    fun createModdedInstanceOffline(name: String, modpackManifestPath: String): Instance {
+        if (instanceConfiguration.getInstance(name) != null) {
+            throw InstanceNameExistsException()
+        }
+
+        val manifest = loadModpackManifest(modpackManifestPath)
+        val instance = Instance(
+            name,
+            manifest.data.mcVersion,
+            manifest.data.name,
+            manifest.data.xmx,
+            "",
+            false
+        )
+        instanceConfiguration.addInstance(instance)
+        Paths.get("instances", instance.name).toFile().mkdirs()
+        Files.write(
+            Paths.get("instances", instance.name, "modpack.json"),
+            gson.toJson(manifest).toByteArray()
+        )
         return instance
     }
 
@@ -100,11 +125,12 @@ class InstanceManager {
                     .addChild(assetsEntry)
                     .addChild(client)
                     .apply {
-                        if (instance.manifestLink.isNotBlank()) addChild(ModpackUpdater(instance).updateModpack(force))
+                        if (!instance.isVanilla) addChild(ModpackUpdater(instance).updateModpack(libs, force))
                     }
             )
         val downloader = download(verify(root, instanceRoot.toString()))
         downloader.start()
+
 
 //        TODO remove
 ///////////////////////
@@ -174,7 +200,8 @@ class InstanceManager {
         }
 
         val assetList = gson.fromJson(assetListResponse.body, AssetList::class.java)
-
+        assetList.listLink = versionManifest.assetIndex.url
+        assetList.name = version.id + ".json"
         return Pair(versionManifest, assetList)
     }
 
@@ -242,10 +269,20 @@ class InstanceManager {
             "assets",
             EntryType.DIRECTORY
         )
-
+        assetList.objects
+        val objects = rootEntry.addChildIfNotPresent(Entry("objects", EntryType.DIRECTORY));
+        val indexes = rootEntry.addChildIfNotPresent(Entry("indexes", EntryType.DIRECTORY));
+        indexes.addChild(
+            Entry(
+                assetList.name,
+                EntryType.FILE,
+                downloadLink = assetList.listLink,
+                initializeFlag = true
+            )
+        )
         assetList.objects.entries.forEach { asset ->
             val prefix = asset.value.hash.substring(0, 2)
-            rootEntry.addChildIfNotPresent(Entry(prefix, EntryType.DIRECTORY))
+            objects.addChildIfNotPresent(Entry(prefix, EntryType.DIRECTORY))
                 .addChildIfNotPresent(
                     Entry(
                         asset.value.hash,
@@ -292,6 +329,10 @@ class InstanceManager {
             throw DownloadErrorException("modpack manifest")
         }
         return gson.fromJson(response.body, ModpackManifest::class.java)
+    }
+
+    private fun loadModpackManifest(path: String): ModpackManifest {
+        return gson.fromJson(String(Files.readAllBytes(Paths.get(path))), ModpackManifest::class.java)
     }
 
 

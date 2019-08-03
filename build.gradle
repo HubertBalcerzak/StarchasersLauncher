@@ -25,3 +25,14 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
+
+task fatJar(type: Jar) {
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+    manifest {
+        attributes 'Implementation-Title': 'Starchasers Launcher', 'Implementation-Version': version
+        attributes 'Main-Class': "ovh.snet.starchaserslauncher.MainKt"
+    }
+}

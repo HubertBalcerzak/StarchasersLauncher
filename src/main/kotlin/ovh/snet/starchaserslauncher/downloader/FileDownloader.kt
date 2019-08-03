@@ -8,6 +8,7 @@ import java.io.File
 import java.io.InputStream
 import java.lang.RuntimeException
 import java.util.*
+import kotlin.math.max
 
 class FileDownloader {
 
@@ -89,7 +90,7 @@ class FileDownloader {
 
         val totalSize = if (totalSize == 0L) totalFiles.toLong() else totalSize
 
-        val averageSize = totalSize / (totalFiles - totalFilesUnknownSize)
+        val averageSize = totalSize / max(totalFiles - totalFilesUnknownSize, 1)
         val assumedTotalSize = totalSize + (averageSize * totalFilesUnknownSize)
         val assumedDownloadedSize = downloadedSize + (averageSize * downloadedFilesUnknownSize)
 

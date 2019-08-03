@@ -5,6 +5,7 @@ import com.mashape.unirest.http.Unirest
 import ovh.snet.starchaserslauncher.downloader.Entry
 import ovh.snet.starchaserslauncher.downloader.EntryType
 import ovh.snet.starchaserslauncher.exception.DownloadErrorException
+import ovh.snet.starchaserslauncher.modpack.ForgeLib
 import ovh.snet.starchaserslauncher.modpack.IgnoredModpackFile
 import ovh.snet.starchaserslauncher.modpack.ModpackFile
 import ovh.snet.starchaserslauncher.modpack.ModpackManifest
@@ -26,13 +27,14 @@ class ModpackUpdater(
         remoteManifestString = getRemoteString()
     }
 
-    fun updateModpack(forceUpdate: Boolean): Entry {
+    fun updateModpack(libsEntry: Entry, forceUpdate: Boolean): Entry {
         val manifest = loadModpackManifest()
 //        val verify = !checkModpackManifestVersion()
 
         val rootEntry = Entry(".minecraft", EntryType.DIRECTORY)
 
         processRegularFiles(manifest.update, rootEntry, manifest.data.rootEndpoint, forceUpdate)
+        processForgeLibs(libsEntry, manifest.forgeLibs, forceUpdate)
         processInitializeFiles(manifest.initialize, rootEntry, manifest.data.rootEndpoint, forceUpdate)
         if (!forceUpdate) applyIgnored(manifest.ignore, rootEntry)
 
@@ -74,6 +76,21 @@ class ModpackUpdater(
                     finalEntry.forceDownloadFlag = forceUpdate
                     finalEntry.hash = it.hash
                 }
+        }
+    }
+
+    private fun processForgeLibs(libsEntry: Entry, libList: List<ForgeLib>, force: Boolean) {
+        libList.forEach {
+            it.path.split("/").fold(libsEntry) { acc, e ->
+                acc.addChildIfNotPresent(Entry(e, EntryType.DIRECTORY))
+            }.apply {
+                initializeFlag = true
+                size = 0
+                type = EntryType.FILE
+                downloadLink = it.link
+                forceDownloadFlag = force
+                hash = ""
+            }
         }
     }
 

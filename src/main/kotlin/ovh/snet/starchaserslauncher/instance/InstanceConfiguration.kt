@@ -63,5 +63,6 @@ class Instance(
     val version: String,
     val modpackName: String,
     val xmx: String,
-    val manifestLink: String = ""
+    val manifestLink: String = "",
+    val isVanilla: Boolean = true
 )

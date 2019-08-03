@@ -37,6 +37,8 @@ class Launcher(private val data: MinecraftLauncherData) {
             add(data.userType)
             add("--versionType")
             add(data.versionType)
+            add("--tweakClass")
+            add("net.minecraftforge.fml.common.launcher.FMLTweaker")
         }
     }
 }
