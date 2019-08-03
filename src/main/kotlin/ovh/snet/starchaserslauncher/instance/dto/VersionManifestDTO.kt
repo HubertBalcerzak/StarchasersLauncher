@@ -7,7 +7,9 @@ class VersionManifest(
     val assets: String,
     val id: String,
     val downloads: Downloads,
-    val libraries: List<Library>
+    val libraries: List<Library>,
+    val minecraftArguments: String,
+    val mainClass: String
 )
 
 class AssetIndex(

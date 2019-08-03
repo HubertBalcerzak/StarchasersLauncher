@@ -52,7 +52,10 @@ class InstanceManager {
             throw InstanceNameExistsException()
         }
 
-        val instance = Instance(name, version.id, "Vanilla", "1G")
+        val (versionManifest, _) = getManifests(version)
+
+        val instance =
+            Instance(name, version.id, "Vanilla", "1G", versionManifest.minecraftArguments, versionManifest.mainClass)
 
         instanceConfiguration.addInstance(instance)
         return instance
@@ -72,6 +75,8 @@ class InstanceManager {
             manifest.data.mcVersion,
             manifest.data.name,
             manifest.data.xmx,
+            manifest.data.minecraftArguments,
+            manifest.data.mainClass,
             modpackLink,
             false
         )
@@ -91,6 +96,8 @@ class InstanceManager {
             manifest.data.name,
             manifest.data.xmx,
             "",
+            manifest.data.minecraftArguments,
+            manifest.data.mainClass,
             false
         )
         instanceConfiguration.addInstance(instance)

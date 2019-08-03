@@ -30,6 +30,8 @@ class ModpackUpdater(
     fun updateModpack(libsEntry: Entry, rootEntry: Entry, forceUpdate: Boolean): Entry {
         Paths.get("instances", instance.name).toFile().mkdirs()
         val manifest = loadModpackManifest()
+        instance.minecraftArguments = manifest.data.minecraftArguments
+        instance.mainClass = manifest.data.mainClass
 //        val verify = !checkModpackManifestVersion()
 
 //        val rootEntry = Entry(".minecraft", EntryType.DIRECTORY)
