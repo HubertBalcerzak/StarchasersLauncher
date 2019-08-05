@@ -27,7 +27,7 @@ class AuthManager {
      * @throws SignInErrorException
      * @throws MinecraftNotBoughtException
      */
-    fun signIn(username: String, password: String) {
+    fun signIn(username: String, password: String, remember: Boolean = false) {
         val response = Unirest
             .post("$MOJANG_AUTH_ROOT_URL/authenticate")
             .header("Content-Type", "application/json")
@@ -49,10 +49,11 @@ class AuthManager {
                 auth.clientToken
             )
         }
-        saveConfiguration()
+        if (remember)
+            saveConfiguration()
     }
 
-    private fun refreshToken(): Boolean {
+    private fun refreshToken(remember: Boolean): Boolean {
         if (authConfiguration == null) return false
         val response = Unirest.post("$MOJANG_AUTH_ROOT_URL/refresh")
             .body(gson.toJson(ValidateDTO(authConfiguration!!.accessToken, authConfiguration!!.id)))
@@ -61,7 +62,8 @@ class AuthManager {
         val refreshDTO = gson.fromJson(response.body, RefreshResponseDTO::class.java)
         authConfiguration =
             AuthConfiguration(authConfiguration!!.username, refreshDTO.accessToken, refreshDTO.clientToken)
-        saveConfiguration()
+        if (remember)
+            saveConfiguration()
         return true
     }
 
@@ -88,7 +90,7 @@ class AuthManager {
 
     fun isSignedIn() = authConfiguration != null
 
-    private fun saveConfiguration() {
+    fun saveConfiguration() {
         if (authConfiguration == null) return
 
         Files.write(Paths.get(AUTH_CONFIG_LOCATION), gson.toJson(authConfiguration).toByteArray())
@@ -105,7 +107,7 @@ class AuthManager {
         authConfiguration = gson.fromJson(String(Files.readAllBytes(confFile.toPath())), AuthConfiguration::class.java)
 
         if (!validate()) {
-            refreshToken()
+            refreshToken(true)
         }
     }
 }
